@@ -1,0 +1,55 @@
+name: Validate Agent Skills
+
+on:
+  pull_request:
+    paths:
+      - "AGENTS.md"
+      - ".agents/skills/**"
+      - ".github/workflows/validate-agent-skills.yml"
+  push:
+    paths:
+      - "AGENTS.md"
+      - ".agents/skills/**"
+      - ".github/workflows/validate-agent-skills.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate skill conventions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          [ -d ".agents/skills" ] || fail "Missing .agents/skills directory."
+          grep -q "\.agents/skills/" AGENTS.md || fail "AGENTS.md must declare .agents/skills/ convention."
+
+          mapfile -t skill_dirs < <(find .agents/skills -mindepth 1 -maxdepth 1 -type d | sort)
+
+          if [ "${#skill_dirs[@]}" -eq 0 ]; then
+            echo "No skill directories yet. Structure check passed."
+            exit 0
+          fi
+
+          for dir in "${skill_dirs[@]}"; do
+            name="$(basename "$dir")"
+
+            if [[ ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+              fail "Invalid skill directory name: $name (allowed: lowercase letters, digits, hyphen)."
+            fi
+
+            [ -f "$dir/SKILL.md" ] || fail "$name missing SKILL.md"
+            [ -f "$dir/install.sh" ] || fail "$name missing install.sh"
+            [ -f "$dir/use.md" ] || fail "$name missing use.md"
+            [ -x "$dir/install.sh" ] || fail "$name install.sh must be executable"
+          done
+
+          echo "All skill directories passed validation."
