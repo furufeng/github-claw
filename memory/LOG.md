@@ -32,3 +32,22 @@
 
 **结论/产出：**
 仓库已具备稳定的技能治理机制：目录统一、结构可验证、规则可持续执行。
+
+---
+
+## 2026-06-02 — 扫码即传官网开发与 GitHub Pages 部署
+
+**做了什么：**
+- 新增技能 `.agents/skills/ui-ux-pro-max/`（SKILL.md / install.sh / use.md）：定义高颜值落地页生成规范
+- 创建 `docs/index.html`：扫码即传项目单文件官网，涵盖 Hero、特性、使用流程、场景、对比、CTA 等完整区块
+  - 动态粒子背景 + Glassmorphism 卡片 + QR 码动画可视化
+  - 纯 HTML/CSS/JS，零依赖，移动端优先响应式设计
+- 新增 `.github/workflows/deploy-pages.yml`：push main 时自动部署到 GitHub Pages
+
+**结论/产出：**
+官网代码已推送；需在 GitHub 仓库 Settings → Pages 中将 Source 设置为 **GitHub Actions**，工作流即可自动部署。
+访问地址：**https://furufeng.github.io/github-claw/**
+
+**待跟进：**
+- 在 GitHub Settings → Pages 启用 Pages（Source: GitHub Actions）
+- 项目正式开源后更新官网中的下载链接
