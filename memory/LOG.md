@@ -18,3 +18,17 @@
 **待跟进：**
 - 根据实际使用情况补充 `memory/LONG_TERM.md` 中的用户偏好
 - 按需在 `projects/` 和 `tools/` 下添加具体内容
+
+---
+
+## 2026-06-02 — 建立技能目录与校验工作流
+
+**做了什么：**
+- 更新 `AGENTS.md`，新增 AI 技能发现 / 安装 / 使用机制
+- 新增 `.agents/skills/README.md`，明确项目级技能目录规范
+- 新增 `.github/workflows/validate-agent-skills.yml`，自动校验技能目录命名与必需文件
+- 更新 `README.md`，补充技能目录入口说明
+- 更新 `memory/LONG_TERM.md` 记录技能机制决策
+
+**结论/产出：**
+仓库已具备稳定的技能治理机制：目录统一、结构可验证、规则可持续执行。

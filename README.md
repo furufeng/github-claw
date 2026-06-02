@@ -9,12 +9,15 @@
 | [`AGENTS.md`](./AGENTS.md) | 助手角色定义、工作规则、记忆管理（**每次对话必读**） |
 | [`memory/LONG_TERM.md`](./memory/LONG_TERM.md) | 长期事实：用户偏好、项目背景、重要决策 |
 | [`memory/LOG.md`](./memory/LOG.md) | 时序任务日志 |
+| [`.agents/skills/`](./.agents/skills/) | 项目级 AI 技能目录（发现 / 安装 / 使用统一约定） |
 
 ## 目录结构
 
 ```
 .
 ├── AGENTS.md          # 核心：角色与规则
+├── .agents/
+│   └── skills/        # 项目级技能（每个技能一个子目录）
 ├── memory/
 │   ├── LONG_TERM.md   # 长期记忆
 │   └── LOG.md         # 任务日志
