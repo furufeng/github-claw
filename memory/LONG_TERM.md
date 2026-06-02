@@ -24,3 +24,4 @@
 |------|------|------|
 | 2026-06-02 | 以 AGENTS.md 为核心配置，memory/ 存储记忆 | 轻量、可扩展，符合 Copilot 工作流 |
 | 2026-06-02 | 项目级技能统一放在 `.agents/skills/`，每个技能独立目录并要求 `SKILL.md/install.sh/use.md` | 保障技能发现、安装与使用机制稳定且可自动校验 |
+| 2026-06-02 | 官网输出到 `docs/` 目录，通过 GitHub Actions 自动部署 GitHub Pages | 零额外服务，push 即上线，URL 固定为 https://furufeng.github.io/github-claw/ |

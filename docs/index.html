@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>扫码即传 · 扫一下，传过来</title>
+  <meta name="description" content="零安装、零配置的跨设备文件传输工具。PC生成二维码，手机扫码即传文本与图片，局域网直连，2秒到达。" />
+  <meta property="og:title" content="扫码即传 · 扫一下，传过来" />
+  <meta property="og:description" content="零安装零配置，扫码3步完成手机→PC文件传输" />
+  <style>
+    /* ===== CSS Variables ===== */
+    :root {
+      --c-bg: #08091a;
+      --c-bg2: #0d0f28;
+      --c-surface: rgba(255,255,255,0.04);
+      --c-surface-hover: rgba(255,255,255,0.08);
+      --c-border: rgba(255,255,255,0.08);
+      --c-primary: #6c63ff;
+      --c-primary-light: #a89cff;
+      --c-accent: #00d2ff;
+      --c-accent2: #ff6b9d;
+      --c-green: #00e5a0;
+      --c-text: #e8eaf6;
+      --c-text-muted: rgba(232,234,246,0.55);
+      --c-text-dim: rgba(232,234,246,0.35);
+      --radius: 16px;
+      --radius-lg: 24px;
+      --shadow: 0 8px 32px rgba(108,99,255,0.15);
+      --shadow-lg: 0 16px 64px rgba(108,99,255,0.25);
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+      background: var(--c-bg);
+      color: var(--c-text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; }
+
+    /* ===== Canvas Background ===== */
+    #canvas-bg {
+      position: fixed; inset: 0; z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== Layout ===== */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 0;
+      background: rgba(8,9,26,0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--c-border);
+      transition: background 0.3s;
+    }
+    nav .inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.1rem; font-weight: 700;
+    }
+    .nav-logo .logo-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .nav-links {
+      display: flex; gap: 32px; list-style: none;
+    }
+    .nav-links a {
+      font-size: 0.9rem; color: var(--c-text-muted);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--c-text); }
+    .nav-cta {
+      background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+      color: #fff !important;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 0.85rem !important;
+      font-weight: 600;
+      transition: opacity 0.2s, transform 0.2s !important;
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ===== HERO ===== */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center;
+      padding: 120px 0 80px;
+      position: relative;
+    }
+    .hero-inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 0.82rem;
+      color: var(--c-primary-light);
+      margin-bottom: 24px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      background: var(--c-green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    .hero-title {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      animation: fadeInDown 0.7s ease both;
+    }
+    .hero-title .grad {
+      background: linear-gradient(135deg, var(--c-primary-light) 0%, var(--c-accent) 50%, var(--c-accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      color: var(--c-text-muted);
+      max-width: 460px;
+      animation: fadeInDown 0.8s ease both;
+    }
+    .hero-actions {
+      margin-top: 36px;
+      display: flex; gap: 16px; flex-wrap: wrap;
+      animation: fadeInDown 0.9s ease both;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(108,99,255,0.4);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(108,99,255,0.5); }
+    .btn-ghost {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      color: var(--c-text-muted);
+    }
+    .btn-ghost:hover { background: var(--c-surface-hover); color: var(--c-text); border-color: rgba(255,255,255,0.15); }
+
+    .hero-stats {
+      display: flex; gap: 32px; margin-top: 40px;
+      animation: fadeInDown 1s ease both;
+    }
+    .stat-item { text-align: left; }
+    .stat-num {
+      font-size: 1.8rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--c-accent), var(--c-primary-light));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .stat-label { font-size: 0.8rem; color: var(--c-text-dim); margin-top: 2px; }
+
+    /* ===== QR Visual ===== */
+    .hero-visual {
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeInRight 0.9s ease both;
+    }
+    .qr-wrapper {
+      position: relative;
+      width: 320px; height: 320px;
+    }
+    .qr-glow {
+      position: absolute; inset: -30px;
+      background: radial-gradient(circle, rgba(108,99,255,0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+    .qr-card {
+      position: relative; z-index: 2;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 28px;
+      padding: 28px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+      animation: float 4s ease-in-out infinite;
+    }
+    .qr-top {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .qr-title { font-size: 0.8rem; color: var(--c-text-muted); font-weight: 500; }
+    .qr-timer {
+      font-size: 0.75rem;
+      background: rgba(0,229,160,0.15);
+      color: var(--c-green);
+      padding: 3px 10px; border-radius: 10px;
+      border: 1px solid rgba(0,229,160,0.25);
+    }
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(13, 1fr);
+      gap: 3px;
+      margin: 0 auto;
+    }
+    .qr-cell {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      background: var(--c-primary);
+      opacity: 0;
+      animation: qrAppear 0.05s ease forwards;
+    }
+    .qr-cell.empty { background: transparent; opacity: 1; }
+    .qr-bottom {
+      margin-top: 16px;
+      text-align: center;
+    }
+    .qr-hint { font-size: 0.78rem; color: var(--c-text-dim); }
+    .qr-url {
+      font-size: 0.72rem; color: var(--c-primary-light);
+      margin-top: 4px; font-family: monospace;
+      word-break: break-all;
+    }
+
+    /* Floating badges around QR */
+    .float-badge {
+      position: absolute;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      animation: float 5s ease-in-out infinite;
+      z-index: 3;
+    }
+    .float-badge .fb-icon { font-size: 1.1rem; }
+    .fb1 { top: -16px; right: -24px; animation-delay: 0s; }
+    .fb2 { bottom: 40px; right: -32px; animation-delay: 1.5s; }
+    .fb3 { bottom: -8px; left: -32px; animation-delay: 0.8s; }
+
+    /* ===== SECTION common ===== */
+    section {
+      padding: 96px 0;
+      position: relative; z-index: 1;
+    }
+    .section-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--c-primary-light);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .section-sub {
+      margin-top: 16px;
+      color: var(--c-text-muted);
+      font-size: 1rem;
+      max-width: 560px;
+    }
+    .section-head { text-align: center; margin-bottom: 64px; }
+    .section-head .section-sub { margin: 16px auto 0; }
+
+    /* ===== FEATURES ===== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .feat-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feat-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--c-primary), var(--c-accent));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feat-card:hover {
+      background: var(--c-surface-hover);
+      border-color: rgba(108,99,255,0.3);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow);
+    }
+    .feat-card:hover::before { opacity: 1; }
+    .feat-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .feat-title { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .feat-desc { font-size: 0.88rem; color: var(--c-text-muted); line-height: 1.6; }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-section { background: linear-gradient(180deg, transparent, rgba(108,99,255,0.04), transparent); }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      position: relative;
+    }
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 40px; left: calc(16.67% + 20px); right: calc(16.67% + 20px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--c-primary), var(--c-accent), var(--c-accent2));
+      z-index: 0;
+    }
+    .step {
+      text-align: center;
+      padding: 0 24px;
+      position: relative; z-index: 1;
+    }
+    .step-num {
+      width: 80px; height: 80px;
+      margin: 0 auto 24px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--c-primary), var(--c-accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      box-shadow: 0 0 0 8px rgba(108,99,255,0.1), 0 0 0 16px rgba(108,99,255,0.05);
+    }
+    .step-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .step-desc { font-size: 0.88rem; color: var(--c-text-muted); line-height: 1.6; }
+
+    /* ===== SCENARIOS ===== */
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .scenario-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      display: flex; gap: 20px;
+      transition: all 0.3s;
+    }
+    .scenario-card:hover {
+      background: var(--c-surface-hover);
+      border-color: rgba(108,99,255,0.25);
+      transform: translateY(-2px);
+    }
+    .scenario-icon {
+      font-size: 2.4rem;
+      flex-shrink: 0;
+      width: 56px;
+      line-height: 1;
+    }
+    .scenario-content {}
+    .scenario-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+    .scenario-pain { font-size: 0.82rem; color: var(--c-text-dim); margin-bottom: 10px; }
+    .scenario-solution { font-size: 0.88rem; color: var(--c-text-muted); }
+    .scenario-solution .arrow { color: var(--c-green); font-weight: 600; }
+
+    /* ===== COMPARE ===== */
+    .compare-section {}
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .compare-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .compare-card.highlight {
+      background: linear-gradient(135deg, rgba(108,99,255,0.12), rgba(0,210,255,0.08));
+      border-color: rgba(108,99,255,0.4);
+      box-shadow: var(--shadow);
+    }
+    .compare-card.highlight .compare-name { color: var(--c-primary-light); }
+    .compare-icon { font-size: 2rem; margin-bottom: 12px; }
+    .compare-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 12px; }
+    .compare-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .tag {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+    .tag-bad { background: rgba(255,107,157,0.12); color: var(--c-accent2); border: 1px solid rgba(255,107,157,0.2); }
+    .tag-good { background: rgba(0,229,160,0.12); color: var(--c-green); border: 1px solid rgba(0,229,160,0.2); }
+
+    /* ===== CTA ===== */
+    .cta-section {
+      text-align: center;
+    }
+    .cta-box {
+      background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(0,210,255,0.08));
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: var(--radius-lg);
+      padding: 72px 48px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-box::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(108,99,255,0.2) 0%, transparent 70%);
+    }
+    .cta-box > * { position: relative; z-index: 1; }
+    .cta-title {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    .cta-sub { font-size: 1rem; color: var(--c-text-muted); margin-bottom: 36px; }
+    .cta-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+    /* ===== FOOTER ===== */
+    footer {
+      border-top: 1px solid var(--c-border);
+      padding: 40px 0;
+      position: relative; z-index: 1;
+    }
+    .footer-inner {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 16px;
+    }
+    .footer-logo {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 1rem; font-weight: 700;
+    }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a { font-size: 0.85rem; color: var(--c-text-dim); transition: color 0.2s; }
+    .footer-links a:hover { color: var(--c-text-muted); }
+    .footer-copy { font-size: 0.82rem; color: var(--c-text-dim); }
+
+    /* ===== Animations ===== */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(40px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-10px); }
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50%       { opacity: 1;   transform: scale(1.08); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.8); }
+    }
+    @keyframes qrAppear {
+      to { opacity: 1; }
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+      .hero-inner { grid-template-columns: 1fr; gap: 48px; }
+      .hero-visual { order: -1; }
+      .qr-wrapper { width: 260px; height: 260px; }
+      .steps { grid-template-columns: 1fr; gap: 40px; }
+      .steps::before { display: none; }
+      .scenario-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+      .cta-box { padding: 48px 24px; }
+      .hero-stats { gap: 20px; }
+    }
+    @media (max-width: 480px) {
+      .features-grid { grid-template-columns: 1fr; }
+      .compare-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Particle Canvas -->
+<canvas id="canvas-bg"></canvas>
+
+<!-- ===== NAV ===== -->
+<nav>
+  <div class="inner">
+    <div class="nav-logo">
+      <div class="logo-icon">📲</div>
+      <span>扫码即传</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#features">特性</a></li>
+      <li><a href="#how">使用流程</a></li>
+      <li><a href="#scenarios">场景</a></li>
+      <li><a href="#compare">对比</a></li>
+      <li><a href="https://github.com/furufeng/github-claw" target="_blank" class="nav-cta">GitHub ↗</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <!-- Left -->
+      <div>
+        <div class="hero-badge">
+          <span class="dot"></span>
+          局域网直连 · 零配置 · 实时传输
+        </div>
+        <h1 class="hero-title">
+          扫一下，<br />
+          <span class="grad">传过来。</span>
+        </h1>
+        <p class="hero-sub">
+          PC 生成二维码，手机扫码即传文本与图片。<br />
+          无需安装 App，局域网直连，2秒到达。
+        </p>
+        <div class="hero-actions">
+          <a href="https://github.com/furufeng/github-claw" target="_blank" class="btn btn-primary">
+            ⬇ 立即下载
+          </a>
+          <a href="#how" class="btn btn-ghost">
+            查看使用流程 →
+          </a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item">
+            <div class="stat-num">&lt;2s</div>
+            <div class="stat-label">传输延迟</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">0</div>
+            <div class="stat-label">安装步骤</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">100%</div>
+            <div class="stat-label">局域网</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: QR Visual -->
+      <div class="hero-visual">
+        <div class="qr-wrapper">
+          <div class="qr-glow"></div>
+          <div class="float-badge fb1">
+            <span class="fb-icon">✉️</span> 文本已接收
+          </div>
+          <div class="float-badge fb2">
+            <span class="fb-icon">🖼️</span> 图片传输中…
+          </div>
+          <div class="float-badge fb3">
+            <span class="fb-icon">🔒</span> 局域网加密
+          </div>
+          <div class="qr-card">
+            <div class="qr-top">
+              <span class="qr-title">📱 手机扫码连接</span>
+              <span class="qr-timer">⏱ 04:58</span>
+            </div>
+            <div class="qr-grid" id="qrGrid"></div>
+            <div class="qr-bottom">
+              <div class="qr-hint">使用手机相机扫描二维码</div>
+              <div class="qr-url">http://192.168.1.x:8080/?id=a3f7c2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FEATURES ===== -->
+<section id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">核心特性</div>
+      <h2 class="section-title">为什么选择扫码即传？</h2>
+      <p class="section-sub">每一个设计决策，都围绕"最少操作，最快传输"展开。</p>
+    </div>
+    <div class="features-grid">
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(108,99,255,0.2),rgba(108,99,255,0.05));">⚡</div>
+        <div class="feat-title">极简操作</div>
+        <div class="feat-desc">扫码即用，3步完成传输。无需注册账号，无需配对绑定，打开即是起点。</div>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:0.1s">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(0,210,255,0.2),rgba(0,210,255,0.05));">🔄</div>
+        <div class="feat-title">实时同步</div>
+        <div class="feat-desc">WebSocket 长连接，延迟 &lt;2s。手机一发，PC 立刻显示，一键复制或保存。</div>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:0.2s">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(0,229,160,0.2),rgba(0,229,160,0.05));">🔒</div>
+        <div class="feat-title">安全私密</div>
+        <div class="feat-desc">局域网直传，uniqueID 加密链接，5分钟自动过期。数据不经过任何云服务器。</div>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:0.3s">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(255,107,157,0.2),rgba(255,107,157,0.05));">📱</div>
+        <div class="feat-title">跨平台</div>
+        <div class="feat-desc">PC 端基于 Electron，手机端纯 H5 网页。安卓/iOS 浏览器扫码即可使用，无需安装 App。</div>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:0.4s">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(255,200,0,0.2),rgba(255,200,0,0.05));">🌐</div>
+        <div class="feat-title">离线优先</div>
+        <div class="feat-desc">不依赖任何云服务，内网断网环境同样可用。适合企业内网、家庭局域网、调试环境。</div>
+      </div>
+      <div class="feat-card reveal" style="transition-delay:0.5s">
+        <div class="feat-icon" style="background:linear-gradient(135deg,rgba(108,99,255,0.2),rgba(0,210,255,0.1));">🖼️</div>
+        <div class="feat-title">文图皆传</div>
+        <div class="feat-desc">支持文本粘贴与图片上传，PC 端自动保存到桌面。批量图片、长文本一次搞定。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== HOW IT WORKS ===== -->
+<section id="how" class="how-section">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">使用流程</div>
+      <h2 class="section-title">三步，完成传输</h2>
+      <p class="section-sub">从打开 PC 端到手机接收完成，全程不超过 30 秒。</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">🖥️</div>
+        <div class="step-title">PC 生成二维码</div>
+        <div class="step-desc">打开桌面客户端，自动生成包含本机局域网地址的二维码，随时可扫。</div>
+      </div>
+      <div class="step reveal" style="transition-delay:0.15s">
+        <div class="step-num">📲</div>
+        <div class="step-title">手机扫码连接</div>
+        <div class="step-desc">用手机相机扫描二维码，浏览器自动打开传输页面，输入文字或选择图片。</div>
+      </div>
+      <div class="step reveal" style="transition-delay:0.3s">
+        <div class="step-num">✅</div>
+        <div class="step-title">PC 实时接收</div>
+        <div class="step-desc">内容实时推送到 PC 端，文本一键复制，图片自动保存到桌面，完成。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SCENARIOS ===== -->
+<section id="scenarios">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">使用场景</div>
+      <h2 class="section-title">每个跨设备场景，都有答案</h2>
+      <p class="section-sub">无论是写作、设计、开发还是会议，扫码即传都能无缝接入你的工作流。</p>
+    </div>
+    <div class="scenario-grid">
+      <div class="scenario-card reveal">
+        <div class="scenario-icon">📝</div>
+        <div class="scenario-content">
+          <div class="scenario-title">文档写作</div>
+          <div class="scenario-pain">手机查到的资料，想快速复制到 PC 上写文档</div>
+          <div class="scenario-solution">扫码 <span class="arrow">→</span> 手机粘贴文本 <span class="arrow">→</span> PC 自动接收 + 一键复制</div>
+        </div>
+      </div>
+      <div class="scenario-card reveal" style="transition-delay:0.1s">
+        <div class="scenario-icon">🎨</div>
+        <div class="scenario-content">
+          <div class="scenario-title">设计协作</div>
+          <div class="scenario-pain">手机拍的灵感图需要传到 PC 处理</div>
+          <div class="scenario-solution">扫码 <span class="arrow">→</span> 手机选图 <span class="arrow">→</span> PC 自动保存到桌面</div>
+        </div>
+      </div>
+      <div class="scenario-card reveal" style="transition-delay:0.2s">
+        <div class="scenario-icon">💻</div>
+        <div class="scenario-content">
+          <div class="scenario-title">开发调试</div>
+          <div class="scenario-pain">手机测试时需要把日志或截图传给 PC</div>
+          <div class="scenario-solution">扫码 <span class="arrow">→</span> 手机上传截图 <span class="arrow">→</span> PC 实时显示</div>
+        </div>
+      </div>
+      <div class="scenario-card reveal" style="transition-delay:0.3s">
+        <div class="scenario-icon">📋</div>
+        <div class="scenario-content">
+          <div class="scenario-title">会议笔记</div>
+          <div class="scenario-pain">PC 记录会议，手机拍的白板照片需要补充进去</div>
+          <div class="scenario-solution">扫码 <span class="arrow">→</span> 手机批量传图 <span class="arrow">→</span> PC 自动归档</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== COMPARE ===== -->
+<section id="compare">
+  <div class="container">
+    <div class="section-head reveal">
+      <div class="section-label">方案对比</div>
+      <h2 class="section-title">你值得更好的选择</h2>
+      <p class="section-sub">告别繁琐，告别云服务依赖，真正的零摩擦传输。</p>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-card reveal">
+        <div class="compare-icon">💬</div>
+        <div class="compare-name">微信文件传输</div>
+        <div class="compare-tags">
+          <span class="tag tag-bad">需登录</span>
+          <span class="tag tag-bad">经过云端</span>
+          <span class="tag tag-bad">网络依赖</span>
+        </div>
+      </div>
+      <div class="compare-card reveal" style="transition-delay:0.1s">
+        <div class="compare-icon">🔵</div>
+        <div class="compare-name">QQ / 钉钉</div>
+        <div class="compare-tags">
+          <span class="tag tag-bad">需安装</span>
+          <span class="tag tag-bad">云端中转</span>
+          <span class="tag tag-bad">有速度限制</span>
+        </div>
+      </div>
+      <div class="compare-card reveal" style="transition-delay:0.2s">
+        <div class="compare-icon">🍎</div>
+        <div class="compare-name">AirDrop</div>
+        <div class="compare-tags">
+          <span class="tag tag-bad">仅苹果生态</span>
+          <span class="tag tag-bad">需开蓝牙</span>
+          <span class="tag tag-bad">偶发连接失败</span>
+        </div>
+      </div>
+      <div class="compare-card highlight reveal" style="transition-delay:0.3s">
+        <div class="compare-icon">📲</div>
+        <div class="compare-name">扫码即传 ✨</div>
+        <div class="compare-tags">
+          <span class="tag tag-good">零安装</span>
+          <span class="tag tag-good">局域网直传</span>
+          <span class="tag tag-good">跨平台</span>
+          <span class="tag tag-good">无需登录</span>
+          <span class="tag tag-good">离线可用</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
+<section class="cta-section">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2 class="cta-title">现在就试试吧 🚀</h2>
+      <p class="cta-sub">开源免费，下载即用。告别繁琐的跨设备传输方式。</p>
+      <div class="cta-actions">
+        <a href="https://github.com/furufeng/github-claw" target="_blank" class="btn btn-primary">
+          ⬇ 下载 PC 客户端
+        </a>
+        <a href="https://github.com/furufeng/github-claw" target="_blank" class="btn btn-ghost">
+          ⭐ GitHub 上 Star
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-logo">
+        <div style="width:28px;height:28px;background:linear-gradient(135deg,var(--c-primary),var(--c-accent));border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;">📲</div>
+        扫码即传
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/furufeng/github-claw" target="_blank">GitHub</a>
+        <a href="#features">特性</a>
+        <a href="#how">流程</a>
+        <a href="#scenarios">场景</a>
+      </div>
+      <div class="footer-copy">MIT License · 开源免费 · 局域网优先</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ===== Particle Canvas =====
+(function() {
+  const canvas = document.getElementById('canvas-bg');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function rand(a, b) { return a + Math.random() * (b - a); }
+
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x = rand(0, W);
+      this.y = rand(0, H);
+      this.r = rand(0.5, 2);
+      this.vx = rand(-0.3, 0.3);
+      this.vy = rand(-0.3, 0.3);
+      this.alpha = rand(0.1, 0.5);
+      this.color = Math.random() > 0.5 ? '108,99,255' : '0,210,255';
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      if (this.x < 0 || this.x > W || this.y < 0 || this.y > H) this.reset();
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color},${this.alpha})`;
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 80; i++) particles.push(new Particle());
+
+  function drawConnections() {
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 100) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(108,99,255,${0.06 * (1 - dist / 100)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, W, H);
+    particles.forEach(p => { p.update(); p.draw(); });
+    drawConnections();
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// ===== QR Grid =====
+(function() {
+  const grid = document.getElementById('qrGrid');
+  // Pattern: simplified QR-like binary map (13x13)
+  const pattern = [
+    1,1,1,1,1,1,1,0,1,1,1,1,1,
+    1,0,0,0,0,0,1,0,1,0,0,0,1,
+    1,0,1,1,1,0,1,0,1,0,1,0,1,
+    1,0,1,1,1,0,1,0,0,1,0,1,1,
+    1,0,1,1,1,0,1,0,1,0,1,0,1,
+    1,0,0,0,0,0,1,0,0,1,0,0,1,
+    1,1,1,1,1,1,1,0,1,0,1,0,1,
+    0,0,0,0,0,0,0,0,0,1,0,1,0,
+    1,1,0,1,1,0,1,1,0,1,1,0,1,
+    0,1,0,0,1,0,0,0,1,0,0,1,0,
+    1,0,1,1,1,1,1,0,1,1,0,0,1,
+    0,1,0,1,0,1,0,1,0,0,1,0,0,
+    1,1,1,1,0,1,1,0,1,0,0,1,1,
+  ];
+  pattern.forEach((v, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'qr-cell' + (v === 0 ? ' empty' : '');
+    if (v === 1) {
+      cell.style.animationDelay = (i * 15) + 'ms';
+      // Vary color slightly
+      const hue = 240 + Math.floor(Math.random() * 40);
+      cell.style.background = `hsl(${hue},70%,70%)`;
+    }
+    grid.appendChild(cell);
+  });
+})();
+
+// ===== Scroll Reveal =====
+(function() {
+  const els = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+  els.forEach(el => observer.observe(el));
+})();
+
+// ===== Countdown timer =====
+(function() {
+  const el = document.querySelector('.qr-timer');
+  let s = 298;
+  setInterval(() => {
+    s = Math.max(0, s - 1);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    el.textContent = `⏱ 0${m}:${sec.toString().padStart(2,'0')}`;
+    if (s === 0) s = 298;
+  }, 1000);
+})();
+</script>
+</body>
+</html>
